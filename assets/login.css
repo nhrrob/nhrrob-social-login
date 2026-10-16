@@ -1,0 +1,69 @@
+/* "Continue with Google": Google's light button, on the login form and above the comment fields. */
+.nhrrob-social-login {
+	margin: 0 0 16px;
+}
+
+.nhrrob-social-login__google {
+	align-items: center;
+	background: #fff;
+	border: 1px solid #747775;
+	border-radius: 4px;
+	box-sizing: border-box;
+	color: #1f1f1f;
+	display: inline-flex;
+	font-family: Roboto, Arial, sans-serif;
+	font-size: 14px;
+	font-weight: 500;
+	gap: 10px;
+	justify-content: center;
+	line-height: 20px;
+	min-height: 40px;
+	padding: 9px 12px;
+	text-decoration: none;
+}
+
+.nhrrob-social-login__google:hover,
+.nhrrob-social-login__google:focus {
+	background: #f8f9fa;
+	color: #1f1f1f;
+}
+
+.nhrrob-social-login__google:focus-visible {
+	outline: 2px solid #0b57d0;
+	outline-offset: 2px;
+}
+
+/* On the login page it spans the width of the form. */
+.login .nhrrob-social-login__google {
+	width: 100%;
+}
+
+/* "or" under the button, once a script has moved it to the top of the login form. */
+.nhrrob-social-login__or {
+	display: none;
+}
+
+.nhrrob-social-login.is-top {
+	margin-bottom: 20px;
+}
+
+.nhrrob-social-login.is-top .nhrrob-social-login__or {
+	align-items: center;
+	color: #646970;
+	display: flex;
+	font-size: 13px;
+	gap: 12px;
+	margin: 16px 0 0;
+}
+
+.nhrrob-social-login.is-top .nhrrob-social-login__or::before,
+.nhrrob-social-login.is-top .nhrrob-social-login__or::after {
+	border-top: 1px solid #dcdcde;
+	content: "";
+	flex: 1;
+}
+
+/* Above the comment fields, apart from the form's heading. */
+.comment-form .nhrrob-social-login {
+	margin-top: 12px;
+}
