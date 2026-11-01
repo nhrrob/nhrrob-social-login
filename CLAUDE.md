@@ -28,6 +28,7 @@ includes/
 assets/login.css the Google button, on the login page and above the comment fields
 tests/           PHPUnit + WP_Mock
 .github/workflows/php.yml   PHPCS, then per PHP version: syntax, unit tests, smoke test
+.github/workflows/release.yml  when Version changes on main: tag v<version> and a GitHub release with readme.txt's changelog
 .github/ci/smoke.php        runs every read-only ability inside a real WordPress
 ```
 
@@ -59,3 +60,7 @@ The codebase is PHPCS-clean, so any new violation is yours; fix it rather than w
 ## Trying it locally
 
 The dev copy is in `~/Sites/nhrrob-dev/wp-content/plugins/`. Without a real Google client, answer `https://oauth2.googleapis.com/token` with a temporary `pre_http_request` filter in a mu-plugin that returns an ID token with the sign-in's nonce, and delete it afterwards. With a real client, register `https://nhrrob-dev.test/wp-admin/admin-post.php?action=nhrrob_social_login` as a redirect URI.
+
+## Releases
+
+Raise `Version` in the header (and the class constant) and `Stable tag`, and add a `= x.y.z =` section under `== Changelog ==` in `readme.txt`. Merging that into `main` runs `release.yml`, which tags `v<version>` and makes the GitHub release. The blog (`nhrrob/nazmulrobin_blog`) requires the plugin by these tags with Composer, so a release reaches it in Dependabot's next pull request.
