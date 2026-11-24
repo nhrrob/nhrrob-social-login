@@ -123,6 +123,16 @@ class Login {
 		$nonce    = Jwt::random();
 		$verifier = Jwt::random();
 
+		/**
+		 * Data an add-on keeps for the length of a sign-in, read from the
+		 * request that started it (a checkbox's choice, for example). It comes
+		 * back as `data` in `nhrrob_social_login_signed_in`'s context.
+		 *
+		 * @param array  $data        Data, empty by default.
+		 * @param string $redirect_to Where the person goes after signing in.
+		 */
+		$data = (array) apply_filters( 'nhrrob_social_login_start_data', [], $redirect_to );
+
 		set_transient(
 			self::key( $state ),
 			[
@@ -132,6 +142,7 @@ class Login {
 				'redirect_to' => $redirect_to,
 				'source'      => $source,
 				'link_user'   => $link_user,
+				'data'        => $data,
 			],
 			self::TTL
 		);
@@ -273,7 +284,7 @@ class Login {
 			self::fail( $user->get_error_code() );
 		}
 
-		self::log_in( $user, $provider->id(), $created, $saved['redirect_to'], $saved['source'] );
+		self::log_in( $user, $provider->id(), $created, $saved['redirect_to'], $saved['source'], isset( $saved['data'] ) && is_array( $saved['data'] ) ? $saved['data'] : [] );
 	}
 
 	/**
@@ -285,9 +296,10 @@ class Login {
 	 * @param bool     $created     Whether the account was made for this sign-in.
 	 * @param string   $redirect_to Where the sign-in asked to go.
 	 * @param string   $source      Where it started.
+	 * @param array    $data        What `nhrrob_social_login_start_data` kept when the sign-in started.
 	 * @return void
 	 */
-	public static function log_in( $user, $provider, $created, $redirect_to, $source ) {
+	public static function log_in( $user, $provider, $created, $redirect_to, $source, $data = [] ) {
 		// Two-factor is left to the provider, which already checked the account.
 		wp_set_current_user( $user->ID );
 		wp_set_auth_cookie( $user->ID, true );
@@ -304,7 +316,8 @@ class Login {
 		 * @param array    $context `provider` (such as 'google', or 'email' for a sign-in link),
 		 *                          `created` (whether the account was made for this sign-in),
 		 *                          `redirect_to` (where they are sent next: the post for a sign-in from a comment form)
-		 *                          and `source` (login, comment, button, woocommerce, onetap or email).
+		 *                          `source` (login, comment, button, woocommerce, onetap or email)
+		 *                          and `data` (what `nhrrob_social_login_start_data` kept when the sign-in started).
 		 */
 		do_action(
 			'nhrrob_social_login_signed_in',
@@ -314,6 +327,7 @@ class Login {
 				'created'     => $created,
 				'redirect_to' => $to,
 				'source'      => $source,
+				'data'        => $data,
 			]
 		);
 

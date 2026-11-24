@@ -58,7 +58,9 @@ tests/            PHPUnit + WP_Mock
 
 ## Hooks for add-ons
 
-- `do_action( 'nhrrob_social_login_signed_in', $user, $context )` after every sign-in: `provider` (or `email` for a sign-in link), `created`, `redirect_to`, `source` (login, comment, button, woocommerce, onetap; `source` since 0.3.0).
+- `do_action( 'nhrrob_social_login_signed_in', $user, $context )` after every sign-in: `provider` (or `email` for a sign-in link), `created`, `redirect_to`, `source` (login, comment, button, woocommerce, onetap), `data`.
+- `apply_filters( 'nhrrob_social_login_button_extra', '', $redirect_to )`: markup printed after the buttons, inside their block, through `wp_kses()` with `Buttons::EXTRA_HTML` (labels, checkboxes, spans).
+- `apply_filters( 'nhrrob_social_login_start_data', [], $redirect_to )` when a sign-in starts: kept in its transient and passed back as the context's `data`.
 - `apply_filters( 'nhrrob_social_login_domain_allowed', $allowed, $email, $user )` to let an address in past the allowed domains.
 - `do_action( 'nhrrob_social_login_enqueue', $handle )` after the app's script; the add-on's script adds `{ groups, screens }` through the `nhrrobSocialLogin.app` JS filter.
 
@@ -72,7 +74,7 @@ These stay as they are once an add-on uses them.
 | user meta `nhrrob_social_login_<provider>_sub` | the linked account's ID at that provider (Google: `nhrrob_social_login_google_sub`, as before) |
 | user meta `nhrrob_social_login_picture`, `_gravatar` | the provider's picture address; whether Gravatar has an image (`yes`/`no`, asked once) |
 | user meta `nhrrob_social_login_no_password` | set on accounts the plugin made, until they set a password: unlinking the last account is refused |
-| transient `nhrrob_social_login_<sha256 of state>`, 10 minutes | a sign-in in progress: provider, nonce, PKCE verifier, redirect_to, source, link_user |
+| transient `nhrrob_social_login_<sha256 of state>`, 10 minutes | a sign-in in progress: provider, nonce, PKCE verifier, redirect_to, source, link_user, add-on data |
 | transient `nhrrob_social_login_magic_<sha256 of token>`, 15 minutes | a sign-in link: email, redirect_to, source |
 | transient `nhrrob_social_login_rate_<email|ip>_<hash>`, 1 hour | sign-in link requests counted |
 | transient `nhrrob_social_login_google_keys` | Google's public keys, for One Tap, as long as Google says |

@@ -18,6 +18,24 @@ if ( ! defined( 'ABSPATH' ) ) {
 class Buttons {
 
 	/**
+	 * What `nhrrob_social_login_button_extra` may print.
+	 */
+	const EXTRA_HTML = [
+		'label' => [
+			'class' => true,
+			'for'   => true,
+		],
+		'input' => [
+			'type'  => true,
+			'class' => true,
+			'id'    => true,
+			'name'  => true,
+			'value' => true,
+		],
+		'span'  => [ 'class' => true ],
+	];
+
+	/**
 	 * Register hooks.
 	 *
 	 * @return void
@@ -100,14 +118,24 @@ class Buttons {
 			);
 		}
 
+		/**
+		 * Extra markup after the buttons, inside their block: an add-on's
+		 * checkbox, for example. Only labels, checkboxes and spans are kept.
+		 *
+		 * @param string $html        Markup, empty by default.
+		 * @param string $redirect_to Where the buttons send the person after signing in.
+		 */
+		$extra = wp_kses( (string) apply_filters( 'nhrrob_social_login_button_extra', '', $redirect_to ), self::EXTRA_HTML );
+
 		$lead = 'comment' === $source && count( $providers ) > 1 ? '<span class="nhrrob-social-login__lead">' . esc_html__( 'Sign in to comment', 'nhrrob-social-login' ) . '</span>' : '';
 
 		return sprintf(
-			'<div class="nhrrob-social-login is-%1$s">%2$s<span class="nhrrob-social-login__buttons">%3$s</span><span class="nhrrob-social-login__or">%4$s</span></div>',
+			'<div class="nhrrob-social-login is-%1$s">%2$s<span class="nhrrob-social-login__buttons">%3$s</span>%5$s<span class="nhrrob-social-login__or">%4$s</span></div>',
 			esc_attr( $source ),
 			$lead,
 			$html,
-			esc_html__( 'or', 'nhrrob-social-login' )
+			esc_html__( 'or', 'nhrrob-social-login' ),
+			$extra
 		);
 	}
 
