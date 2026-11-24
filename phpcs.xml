@@ -16,6 +16,7 @@
 	<exclude-pattern>/vendor/*</exclude-pattern>
 	<exclude-pattern>/node_modules/*</exclude-pattern>
 	<exclude-pattern>/tests/*</exclude-pattern>
+	<exclude-pattern>/admin/build/*</exclude-pattern>
 
 	<!--
 	index.php files are directory-listing guards whose entire contents are

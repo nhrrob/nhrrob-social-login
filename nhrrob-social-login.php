@@ -5,7 +5,7 @@
  * Description: Log in, and comment, with a Google account.
  * Author: Nazmul Hasan Robin
  * Author URI: https://profiles.wordpress.org/nhrrob/
- * Version: 0.1.0
+ * Version: 0.2.0
  * Requires at least: 6.6
  * Requires PHP: 7.4
  * Text Domain: nhrrob-social-login
@@ -31,7 +31,7 @@ final class NHRRob_Social_Login {
 	 *
 	 * @var string
 	 */
-	const VERSION = '0.1.0';
+	const VERSION = '0.2.0';
 
 	/**
 	 * Class constructor
@@ -59,13 +59,14 @@ final class NHRRob_Social_Login {
 	}
 
 	/**
-	 * Initialize the plugin: the buttons, the sign-in flow, the settings screen and the abilities.
+	 * Initialize the plugin: the buttons, the sign-in flow, the abilities, the settings app and its routes.
 	 *
 	 * @return void
 	 */
 	public function init_plugin(): void {
 		( new \NHRRob\SocialLogin\Login() )->init();
 		( new \NHRRob\SocialLogin\Abilities() )->init();
+		( new \NHRRob\SocialLogin\Rest() )->init();
 
 		if ( is_admin() ) {
 			( new \NHRRob\SocialLogin\Admin() )->init();

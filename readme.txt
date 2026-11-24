@@ -4,7 +4,7 @@ Tags: login, google, social login, comments
 Requires at least: 6.6
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 0.1.0
+Stable tag: 0.2.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -57,6 +57,12 @@ The settings in one option, and for each linked user the Google account's ID in 
 The settings and the links to Google accounts. User accounts stay.
 
 == Changelog ==
+
+= 0.2.0 =
+* Settings → Social Login is a new screen, in light and dark, with the sign-in status and how many users are linked.
+* A Settings link on the Plugins screen.
+* The login button is moved to the top of the form by a script file instead of an inline script.
+* For developers: the `nhrrob_social_login_signed_in` action after each sign-in.
 
 = 0.1.0 =
 * First version: Google sign-in on the login form and above the comment form, accounts for new Google users as an option, and the get-status ability.

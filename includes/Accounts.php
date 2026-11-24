@@ -26,9 +26,12 @@ class Accounts {
 	 *
 	 * @param array $identity `sub`, `email`, `name`, `given_name`, from Google::check_claims().
 	 * @param bool  $create   Whether a new subscriber may be created.
+	 * @param bool  $created  Set to whether a new user was created.
 	 * @return \WP_User|\WP_Error
 	 */
-	public static function user_for( array $identity, $create ) {
+	public static function user_for( array $identity, $create, &$created = false ) {
+		$created = false;
+
 		$linked = get_users(
 			[
 				'meta_key'   => Login::META_SUB, // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key -- one indexed lookup per sign-in.
@@ -74,8 +77,27 @@ class Accounts {
 		}
 
 		update_user_meta( $id, Login::META_SUB, $identity['sub'] );
+		$created = true;
 
 		return get_user_by( 'id', $id );
+	}
+
+	/**
+	 * How many users are linked to a Google account.
+	 *
+	 * @return int
+	 */
+	public static function linked_count() {
+		$linked = new \WP_User_Query(
+			[
+				'meta_key'    => Login::META_SUB, // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key -- a count for the owner.
+				'fields'      => 'ID',
+				'number'      => 1,
+				'count_total' => true,
+			]
+		);
+
+		return (int) $linked->get_total();
 	}
 
 	/**

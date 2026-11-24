@@ -60,11 +60,6 @@ class Login {
 		$to = isset( $_REQUEST['redirect_to'] ) ? esc_url_raw( wp_unslash( $_REQUEST['redirect_to'] ) ) : '';
 
 		$this->button( $to, __( 'Continue with Google', 'nhrrob-social-login' ) );
-
-		if ( Settings::google_ready() ) {
-			// The login_form hook prints after the password; move the button to the top of the form, above an "or".
-			echo '<script>(function(f,b){if(f&&b){b.classList.add("is-top");f.insertBefore(b,f.firstChild);}})(document.getElementById("loginform"),document.querySelector("#loginform .nhrrob-social-login"));</script>';
-		}
 	}
 
 	/**
@@ -123,6 +118,11 @@ class Login {
 		}
 
 		wp_enqueue_style( 'nhrrob-social-login', plugins_url( 'assets/login.css', NHRROB_SOCIAL_LOGIN_FILE ), [], NHRROB_SOCIAL_LOGIN_VERSION );
+
+		if ( 'login_enqueue_scripts' === current_action() ) {
+			// The login_form hook prints after the password; the script moves the button to the top of the form, above an "or".
+			wp_enqueue_script( 'nhrrob-social-login', plugins_url( 'assets/login.js', NHRROB_SOCIAL_LOGIN_FILE ), [], NHRROB_SOCIAL_LOGIN_VERSION, true );
+		}
 	}
 
 	/**
@@ -212,7 +212,8 @@ class Login {
 			$this->fail( 'google' );
 		}
 
-		$user = Accounts::user_for( $identity, Settings::create_accounts() );
+		$created = false;
+		$user    = Accounts::user_for( $identity, Settings::create_accounts(), $created );
 
 		if ( is_wp_error( $user ) ) {
 			$this->fail( $user->get_error_code() );
@@ -229,6 +230,23 @@ class Login {
 
 		// wp_validate_redirect() returns an empty address as it is, not the fallback.
 		$to = '' !== $saved['redirect_to'] ? wp_validate_redirect( $saved['redirect_to'], $fallback ) : $fallback;
+
+		/**
+		 * After someone signed in with a social account and was logged in.
+		 *
+		 * @param \WP_User $user    The user who signed in.
+		 * @param array    $context `provider` ('google'), `created` (whether the account was made for this sign-in)
+		 *                          and `redirect_to` (where they are sent next: the post for a sign-in from a comment form).
+		 */
+		do_action(
+			'nhrrob_social_login_signed_in',
+			$user,
+			[
+				'provider'    => 'google',
+				'created'     => $created,
+				'redirect_to' => $to,
+			]
+		);
 
 		wp_safe_redirect( $to );
 		exit;
