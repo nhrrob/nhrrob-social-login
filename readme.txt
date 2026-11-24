@@ -80,10 +80,12 @@ The settings, sign-ins in progress, the links to provider accounts and the pictu
 On GitHub: https://github.com/nhrrob/nhrrob-social-login. The settings screen and the block are built from `admin/src` with `npm install` and `npm run build`; both the source and the build are in the plugin.
 
 == Screenshots ==
-1. "Continue with Google" at the top of the login form.
-2. "Continue with Google to comment" above the comment form.
-3. Settings → Social Login: a provider, its redirect URI and credentials.
-4. The same screen in dark mode.
+1. The login form with all seven providers and "Email me a sign-in link".
+2. The buttons above the comment form, and the verified mark after a commenter's name.
+3. Settings → Social Login → Providers: each provider's switch, redirect URI and credentials.
+4. Accounts, in dark mode: new users, their role, redirects and allowed email domains.
+5. Extras: Google One Tap, sign-in links by email, the avatar, the verified mark and the email about new accounts.
+6. "Sign-in accounts" on the profile screen: link and unlink.
 
 == Changelog ==
 
