@@ -25,9 +25,28 @@ Site owners who want visitors to log in, and above all to comment, without a pas
 | Linked by Google's `sub`, not by email | An email address can change hands; the `sub` never does. A user linked to one Google account is never relinked to another. |
 | A classic settings screen | Three fields. A React app like the other plugins' screens can come with more providers. |
 
+## What 0.3.0 adds
+
+The roadmap that the market check put in the free plugin (every item is free in Nextend, miniOrange or rtCamp's plugin), issues #11 to #22:
+
+1. Microsoft, Apple, GitHub, Facebook, X and LinkedIn next to Google. A provider is a class in `includes/Providers/`; `Login` stays the flow.
+2. Link and unlink sign-in accounts on the profile screen, while another way in is left.
+3. The provider's picture as the avatar for users without a Gravatar.
+4. The role of new accounts, with a warning for roles that can write posts.
+5. Redirects after logging in and after signing up, from the login form.
+6. The "Social login buttons" block and the `[nhrrob_social_login]` shortcode.
+7. Google One Tap, off by default.
+8. Allowed email domains (setting or constant).
+9. The buttons on WooCommerce's My account and checkout.
+10. An email to the owner about new accounts.
+11. Sign-in links by email.
+12. A verified mark on comments.
+
+Settings → Social Login has three screens: Providers, Accounts, Extras.
+
 ## Left out on purpose (for now)
 
-- Providers other than Google (GitHub, Facebook, a code by email or phone). The flow is in `Login`, the provider in `Google`, so another provider is a new class.
-- Unlinking a Google account from the profile screen.
-- Changing the role of new accounts.
-- A shortcode or block for the button.
+- Providers beyond these seven (Discord, Twitch, Yahoo, a code by phone). Another provider is one more class.
+- Passkeys: NHR Secure's field.
+- Asking for an email address or username when a provider gives none: such sign-ins are refused.
+- The paid add-on's features (see its own repo).

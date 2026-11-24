@@ -2,7 +2,7 @@
 
 Slug `nhrrob-social-login` · display name "NHR Social Login" · settings under **Settings → Social Login**.
 
-Status: 0.2.1, public repo since 2026-11-24, not yet submitted to WordPress.org: the account may have one plugin awaiting review, and NHR Post Insights is (since 2026-11-23). Submit the `wp dist-archive` zip once Post Insights is approved. `.ai/PRD.md` holds the scope and what was left out on purpose, `docs/DECISIONS.md` why things are the way they are: read both before proposing a feature.
+Status: 0.3.0 (seven providers, sign-in links by email, One Tap and the rest of the first roadmap), public repo since 2026-11-24, not yet submitted to WordPress.org: the account may have one plugin awaiting review, and NHR Post Insights is (since 2026-11-23). Submit the `wp dist-archive` zip once Post Insights is approved (#10). `.ai/PRD.md` holds the scope and what was left out on purpose, `docs/DECISIONS.md` why things are the way they are: read both before proposing a feature.
 
 **Open work is in GitHub issues**, one per feature: `agent-ready` can be built alone, `robin` waits on Robin. When asked to continue, list the open issues, check the state (`gh`, `git`), and work from #10 (the WordPress.org submission, Robin's) and #11 onwards. Close an issue in the pull request that does it.
 
@@ -10,32 +10,45 @@ Status: 0.2.1, public repo since 2026-11-24, not yet submitted to WordPress.org:
 
 ## Rules that are specific to this plugin
 
-1. **The client secret never leaves the server**: no page, ability or REST answer contains it. The settings screen never fills the secret field; an empty field keeps the stored one.
-2. **Only verified Google email addresses** are accepted, and an account is linked by Google's `sub`. A user linked to one `sub` is never relinked to another (`linked_other`).
-3. **A sign-in is accepted once, in the browser that started it**: state in an HttpOnly, SameSite=Lax cookie and a transient named after its hash, PKCE (S256), and the nonce in the ID token. All three are checked in `Login::finish()` and `Google::check_claims()`.
-4. **New accounts only through the plugin's own setting**, as Subscribers. Never through "Anyone can register", which can stay off.
+1. **Secrets never leave the server**: no page, ability or REST answer contains a client secret or Apple's private key (fields marked `secret` in a provider's `fields()`). The settings screen never fills a secret field; an empty field keeps the stored one.
+2. **Only verified email addresses** are accepted (each provider decides in its class how it knows; Microsoft work accounts need `xms_edov`), and an account is linked by the provider's account ID in `nhrrob_social_login_<provider>_sub` (Google's key is unchanged). A user linked to one ID at a provider is never relinked to another (`linked_other`).
+3. **A sign-in is accepted once, in the browser that started it**: state in an HttpOnly, SameSite=Lax cookie and a transient named after its hash, plus PKCE (S256) and an ID-token nonce wherever the provider takes them. Checked in `Login::finish()` and each provider's `check_claims()`. Apple answers with a cross-site POST, which drops the Lax cookie, so `Login::posted_back()` turns it into a 303 GET. One Tap's token comes through the browser, so its RS256 signature is checked against Google's keys, and its nonce against a cookie. A sign-in link works once, after a button press, in the browser that opened it.
+4. **New accounts only through the plugin's own setting**, as Subscribers unless the owner picks another role (`Accounts::safe_role()`: never a role with `manage_options`, `promote_users`, `edit_users` or `create_users`; one with `edit_posts` only after the warning is ticked). Never through "Anyone can register", which can stay off.
 5. **Redirects**: only `wp_safe_redirect()` after `wp_validate_redirect()`, with an explicit fallback for an empty address (dashboard for authors, home for everyone else).
 6. **Identifiers**: namespace `NHRRob\SocialLogin\`, class `NHRRob_Social_Login`, constants `NHRROB_SOCIAL_LOGIN_*`, option and meta prefix `nhrrob_social_login_`, CSS prefix `nhrrob-social-login`, text domain `nhrrob-social-login`.
 
 ## Layout
 
 ```
-nhrrob-social-login.php   main class, constants; Login and Abilities always, Admin in the dashboard only
-uninstall.php             deletes the option, and the Google links from user meta
+nhrrob-social-login.php   main class, constants, FEATURES (one class each); Admin in the dashboard only
+uninstall.php             deletes the option, transients, and the plugin's user meta
 includes/
-  Settings.php   client ID and secret (constants first), create_accounts, redirect_uri()
-  Login.php      the buttons, and admin-post.php?action=nhrrob_social_login: start, finish, errors
-  Google.php     auth_url(), identity() (token exchange), check_claims() (pure), PKCE helpers
-  Accounts.php   user_for(): linked user, else by email, else a new Subscriber
-  Admin.php      Settings → Social Login: mounts the React app, the Settings link on the Plugins screen
-  Rest.php       GET/POST nhrrob-social-login/v1/settings (manage_options; never the secret)
-  Abilities.php  nhrrob-social-login/get-status (read-only)
-assets/login.css the Google button, on the login page and above the comment fields
-assets/login.js  moves the button to the top of the login form
-admin/src/       the settings app (React, @wordpress/scripts): app.js, screens/Setup.js, components/ (shell from Issue Reporter)
-admin/build/     compiled, committed
-docs/            DECISIONS.md (one row per decision), notes/YYYY-MM-DD.md (one per working session)
-tests/           PHPUnit + WP_Mock
+  Settings.php      every setting; a provider's fields from wp-config.php constants first
+  Providers.php     the registry: all(), get(), active(), linked( $user_id )
+  Providers/        Provider (base), Google, Microsoft, Apple, GitHub, Facebook, X, LinkedIn
+  Jwt.php           base64url, claims, PKCE, ES256 signing (Apple), RS256 checking (One Tap)
+  Login.php         admin-post.php?action=nhrrob_social_login: start every sign-in, finish Google's; log_in(), destination(), errors
+  Callback.php      /nhrrob-social-login/callback/<provider>/ (a rewrite rule), where the other providers answer
+  Accounts.php      user_for(): linked user, else by email, else a new account; domains, roles
+  Buttons.php       the buttons on the login and comment forms; render() for everything else
+  Profile.php       "Sign-in accounts" on the profile screen: link, unlink
+  Avatar.php        the provider's picture for users without a Gravatar (asked once, at sign-in)
+  Shortcode.php     [nhrrob_social_login] and the nhrrob-social-login/buttons block (server-rendered)
+  OneTap.php        Google One Tap
+  WooCommerce.php   the buttons on My account and checkout
+  Notify.php        the email about new accounts
+  MagicLink.php     wp-login.php?action=nhrrob_social_login_email: sign-in links by email
+  VerifiedMark.php  the mark after a comment author's name
+  Admin.php         Settings → Social Login: mounts the React app, the Settings link on the Plugins screen
+  Rest.php          GET/POST nhrrob-social-login/v1/settings (manage_options; never a secret)
+  Abilities.php     nhrrob-social-login/get-status (read-only)
+assets/login.css  the buttons, the verified mark
+assets/login.js   moves the buttons to the top of the login form
+assets/onetap.js  One Tap's prompt and the post back
+admin/src/        the settings app (React, @wordpress/scripts): app.js, screens/ (Providers, Accounts, Extras), components/ (shell from Issue Reporter), block/ (the block's editor script)
+admin/build/      compiled, committed: index.* (the app), block.* (the block)
+docs/             DECISIONS.md (one row per decision), notes/YYYY-MM-DD.md (one per working session)
+tests/            PHPUnit + WP_Mock
 .github/workflows/php.yml   PHPCS, then per PHP version: syntax, unit tests, smoke test
 .github/workflows/plugin-check.yml  Plugin Check on the files the zip holds
 .github/workflows/deploy-on-pushing-a-new-tag.yml  a v<version> tag goes to WordPress.org
@@ -45,7 +58,8 @@ tests/           PHPUnit + WP_Mock
 
 ## Hooks for add-ons
 
-- `do_action( 'nhrrob_social_login_signed_in', $user, $context )` after a social sign-in: `provider`, `created`, `redirect_to`.
+- `do_action( 'nhrrob_social_login_signed_in', $user, $context )` after every sign-in: `provider` (or `email` for a sign-in link), `created`, `redirect_to`, `source` (login, comment, button, woocommerce, onetap; `source` since 0.3.0).
+- `apply_filters( 'nhrrob_social_login_domain_allowed', $allowed, $email, $user )` to let an address in past the allowed domains.
 - `do_action( 'nhrrob_social_login_enqueue', $handle )` after the app's script; the add-on's script adds `{ groups, screens }` through the `nhrrobSocialLogin.app` JS filter.
 
 These stay as they are once an add-on uses them.
@@ -54,10 +68,15 @@ These stay as they are once an add-on uses them.
 
 | Where | Holds |
 |---|---|
-| option `nhrrob_social_login_settings` | `google_client_id`, `google_client_secret` (when not in wp-config.php), `create_accounts` |
-| user meta `nhrrob_social_login_google_sub` | the linked Google account's `sub` |
-| transient `nhrrob_social_login_<sha256 of state>`, 10 minutes | a sign-in in progress: nonce, PKCE verifier, redirect_to |
-| cookie `nhrrob_social_login_state`, 10 minutes | the state, deleted when the sign-in finishes |
+| option `nhrrob_social_login_settings` | per provider `<id>_enabled` and its fields (`<id>_client_id`, `<id>_client_secret`; Apple `apple_team_id`, `apple_key_id`, `apple_private_key`) when not in wp-config.php; `create_accounts`, `new_user_role`, `allow_author_roles`, `login_redirect`, `signup_redirect`, `allowed_domains`, `use_avatar`, `one_tap`, `notify_admin`, `magic_link`, `verified_mark` |
+| user meta `nhrrob_social_login_<provider>_sub` | the linked account's ID at that provider (Google: `nhrrob_social_login_google_sub`, as before) |
+| user meta `nhrrob_social_login_picture`, `_gravatar` | the provider's picture address; whether Gravatar has an image (`yes`/`no`, asked once) |
+| user meta `nhrrob_social_login_no_password` | set on accounts the plugin made, until they set a password: unlinking the last account is refused |
+| transient `nhrrob_social_login_<sha256 of state>`, 10 minutes | a sign-in in progress: provider, nonce, PKCE verifier, redirect_to, source, link_user |
+| transient `nhrrob_social_login_magic_<sha256 of token>`, 15 minutes | a sign-in link: email, redirect_to, source |
+| transient `nhrrob_social_login_rate_<email|ip>_<hash>`, 1 hour | sign-in link requests counted |
+| transient `nhrrob_social_login_google_keys` | Google's public keys, for One Tap, as long as Google says |
+| cookies `nhrrob_social_login_state`, `_onetap`, `_email` | the state, One Tap's nonce, a sign-in link's hash; each deleted when used |
 
 ## Commands
 
@@ -66,7 +85,7 @@ composer install            # dev toolchain (phpcs + phpunit)
 composer install --no-dev   # production autoloader (what is committed under vendor/)
 composer run phpcs          # WordPress Coding Standards + PHPCompatibilityWP
 composer run test:unit      # PHPUnit (WP_Mock, no DB, no network)
-npm run lint:js && npm run build   # the settings app; commit admin/build
+npm run lint:js && npm run build   # the settings app and the block; commit admin/build
 wp eval-file .github/ci/smoke.php   # inside a WordPress install with the plugin active
 ```
 
@@ -78,7 +97,7 @@ The codebase is PHPCS-clean, so any new violation is yours; fix it rather than w
 
 ## Trying it locally
 
-The dev copy is in `~/Sites/nhrrob-dev/wp-content/plugins/`. Without a real Google client, answer `https://oauth2.googleapis.com/token` with a temporary `pre_http_request` filter in a mu-plugin that returns an ID token with the sign-in's nonce, and delete it afterwards. With a real client, register `https://nhrrob-dev.test/wp-admin/admin-post.php?action=nhrrob_social_login` as a redirect URI.
+The dev copy is in `~/Sites/nhrrob-dev/wp-content/plugins/`. Without real clients, answer the providers' server endpoints with a temporary `pre_http_request` filter in a mu-plugin (ID tokens carrying the sign-in's nonce), and their browser pages with Playwright routes; delete the mu-plugin afterwards. The dev site's login page is at `/access` (NHR Secure). With a real client, register the redirect URI its card shows.
 
 ## Releases
 
