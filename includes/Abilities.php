@@ -95,15 +95,6 @@ class Abilities {
 	 * @return array
 	 */
 	public function get_status() {
-		$linked = new \WP_User_Query(
-			[
-				'meta_key'    => Login::META_SUB, // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key -- a count for the owner.
-				'fields'      => 'ID',
-				'number'      => 1,
-				'count_total' => true,
-			]
-		);
-
 		return [
 			'google'          => [
 				'ready'            => Settings::google_ready(),
@@ -114,7 +105,7 @@ class Abilities {
 				'redirect_uri'     => Settings::redirect_uri(),
 			],
 			'create_accounts' => Settings::create_accounts(),
-			'linked_users'    => (int) $linked->get_total(),
+			'linked_users'    => Accounts::linked_count(),
 		];
 	}
 }

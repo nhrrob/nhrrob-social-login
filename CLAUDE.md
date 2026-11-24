@@ -23,14 +23,26 @@ includes/
   Login.php      the buttons, and admin-post.php?action=nhrrob_social_login: start, finish, errors
   Google.php     auth_url(), identity() (token exchange), check_claims() (pure), PKCE helpers
   Accounts.php   user_for(): linked user, else by email, else a new Subscriber
-  Admin.php      Settings → Social Login (Settings API)
+  Admin.php      Settings → Social Login: mounts the React app, the Settings link on the Plugins screen
+  Rest.php       GET/POST nhrrob-social-login/v1/settings (manage_options; never the secret)
   Abilities.php  nhrrob-social-login/get-status (read-only)
 assets/login.css the Google button, on the login page and above the comment fields
+assets/login.js  moves the button to the top of the login form
+admin/src/       the settings app (React, @wordpress/scripts): app.js, screens/Setup.js, components/ (shell from Issue Reporter)
+admin/build/     compiled, committed
+docs/            DECISIONS.md (one row per decision), notes/YYYY-MM-DD.md (one per working session)
 tests/           PHPUnit + WP_Mock
 .github/workflows/php.yml   PHPCS, then per PHP version: syntax, unit tests, smoke test
 .github/workflows/release.yml  when Version changes on main: tag v<version> and a GitHub release with readme.txt's changelog
 .github/ci/smoke.php        runs every read-only ability inside a real WordPress
 ```
+
+## Hooks for add-ons
+
+- `do_action( 'nhrrob_social_login_signed_in', $user, $context )` after a social sign-in: `provider`, `created`, `redirect_to`.
+- `do_action( 'nhrrob_social_login_enqueue', $handle )` after the app's script; the add-on's script adds `{ groups, screens }` through the `nhrrobSocialLogin.app` JS filter.
+
+These stay as they are once an add-on uses them.
 
 ## Stored data
 
@@ -48,6 +60,7 @@ composer install            # dev toolchain (phpcs + phpunit)
 composer install --no-dev   # production autoloader (what is committed under vendor/)
 composer run phpcs          # WordPress Coding Standards + PHPCompatibilityWP
 composer run test:unit      # PHPUnit (WP_Mock, no DB, no network)
+npm run lint:js && npm run build   # the settings app; commit admin/build
 wp eval-file .github/ci/smoke.php   # inside a WordPress install with the plugin active
 ```
 

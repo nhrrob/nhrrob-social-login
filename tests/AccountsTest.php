@@ -49,7 +49,9 @@ class AccountsTest extends TestCase {
 		WP_Mock::userFunction( 'update_user_meta' )->never();
 		WP_Mock::userFunction( 'wp_insert_user' )->never();
 
-		$this->assertSame( $linked, Accounts::user_for( $this->identity(), true ) );
+		$new = true;
+		$this->assertSame( $linked, Accounts::user_for( $this->identity(), true, $new ) );
+		$this->assertFalse( $new );
 	}
 
 	public function testTheUserWithTheEmailIsLinkedOnce() {
@@ -100,7 +102,9 @@ class AccountsTest extends TestCase {
 		WP_Mock::userFunction( 'update_user_meta' )->once()->with( 12, Login::META_SUB, 'google-1' );
 		WP_Mock::userFunction( 'get_user_by' )->with( 'id', 12 )->andReturn( $created );
 
-		$this->assertSame( $created, Accounts::user_for( $this->identity(), true ) );
+		$new = false;
+		$this->assertSame( $created, Accounts::user_for( $this->identity(), true, $new ) );
+		$this->assertTrue( $new );
 	}
 
 	public function testATakenUsernameGetsANumber() {
