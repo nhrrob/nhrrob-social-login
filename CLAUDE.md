@@ -83,7 +83,7 @@ The dev copy is in `~/Sites/nhrrob-dev/wp-content/plugins/`. Without a real Goog
 Releases are made by hand, as in Secure and Post Insights; nothing is tagged on a version change.
 
 1. On a branch: raise `Version` in the header (and the class constant), `Stable tag` and `package.json`'s `version`, and add a `= x.y.z =` section under `== Changelog ==` in `readme.txt`. Merge it into `main`.
-2. On GitHub, create a release from `main` with a new tag `v<version>` and that version's changelog as its notes. The tag push runs `deploy-on-pushing-a-new-tag.yml`, which sends the version to WordPress.org with the `SVN_USERNAME` and `SVN_PASSWORD` secrets. Until WordPress.org approves the plugin and the secrets are set, that run fails; the tag and release still work for the blog.
+2. Tag `main` and push the tag: `git tag v<version> && git push origin v<version>`. The tag push runs `deploy-on-pushing-a-new-tag.yml`, which sends the version to WordPress.org with the `SVN_USERNAME` and `SVN_PASSWORD` secrets and, in a separate job, makes the GitHub release with that version's changelog from `readme.txt`; don't make one by hand. Until WordPress.org approves the plugin and the secrets are set, the deploy job fails; the tag and the GitHub release still work for the blog.
 3. To change only the readme or the listing's images, push to `trunk`. Bring `trunk` up to `main` after each release.
 
 The blog (`nhrrob/nazmulrobin_blog`) requires the plugin by these tags with Composer, so a release reaches it in Dependabot's next pull request.

@@ -16,3 +16,4 @@ The reasons behind the first version are in [PRD.md](../.ai/PRD.md), "Decisions 
 | 2026-11-24 | The repo goes public and the plugin to WordPress.org; business documents live only in the private Pro repo | Robin's rule for every plugin: the free repo is public | Making it private again does not unpublish what was seen | Robin |
 | 2026-11-24 | Releases by hand (a GitHub release makes the tag), deployed to WordPress.org by the tag; `release.yml` that tagged on a version change is removed | The same as Secure and Post Insights; a tag is now also a WordPress.org release | Yes | Robin's rule |
 | 2026-11-24 | `package.json` and `admin/src` ship in the zip | WordPress.org asks for the source of built code | Yes | Claude |
+| 2026-11-24 | A pushed tag `v<version>` is the whole release: the tag push deploys to WordPress.org and makes the GitHub release, which is no longer made by hand | Robin: fewer manual steps, the same in every plugin | Yes | Robin |
