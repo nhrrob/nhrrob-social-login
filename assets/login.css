@@ -38,6 +38,15 @@
 	width: 100%;
 }
 
+/* An add-on's markup after the button (nhrrob_social_login_button_extra) goes on its own line. */
+.nhrrob-social-login > label {
+	align-items: center;
+	display: flex;
+	font-size: 13px;
+	gap: 6px;
+	margin: 10px 0 0;
+}
+
 /* "or" under the button, once a script has moved it to the top of the login form. */
 .nhrrob-social-login__or {
 	display: none;

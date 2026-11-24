@@ -4,7 +4,7 @@ Tags: google login, social login, login, comments, oauth
 Requires at least: 6.6
 Tested up to: 7.1
 Requires PHP: 7.4
-Stable tag: 0.2.1
+Stable tag: 0.3.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -68,6 +68,9 @@ On GitHub: https://github.com/nhrrob/nhrrob-social-login. The settings screen is
 4. The same screen in dark mode.
 
 == Changelog ==
+
+= 0.3.0 =
+* For developers: the `nhrrob_social_login_button_extra` filter adds a checkbox or a note after the sign-in button, and the `nhrrob_social_login_start_data` filter keeps data for the length of a sign-in, passed to `nhrrob_social_login_signed_in` as `data`.
 
 = 0.2.1 =
 * Deleting the plugin also removes sign-ins still in progress.
