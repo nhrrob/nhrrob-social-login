@@ -4,6 +4,8 @@ Slug `nhrrob-social-login` · display name "NHR Social Login" · settings under 
 
 Status: 0.2.1, public repo since 2026-11-24, not yet submitted to WordPress.org: the account may have one plugin awaiting review, and NHR Post Insights is (since 2026-11-23). Submit the `wp dist-archive` zip once Post Insights is approved. `.ai/PRD.md` holds the scope and what was left out on purpose, `docs/DECISIONS.md` why things are the way they are: read both before proposing a feature.
 
+**Open work is in GitHub issues**, one per feature: `agent-ready` can be built alone, `robin` waits on Robin. When asked to continue, list the open issues, check the state (`gh`, `git`), and work from #10 (the WordPress.org submission, Robin's) and #11 onwards. Close an issue in the pull request that does it.
+
 **Business documents stay out of this repo.** Prices, competitors, positioning and Pro plans live only in the private repo `nhrrob/nhrrob-social-login-pro`, in its `docs/`. This repo, its issues and its pull requests are public: at most they say that a paid add-on exists.
 
 ## Rules that are specific to this plugin
