@@ -2,7 +2,9 @@
 
 Slug `nhrrob-social-login` · display name "NHR Social Login" · settings under **Settings → Social Login**.
 
-Private repository, version 0.x, not on WordPress.org. `.ai/PRD.md` holds the scope and what was left out on purpose: read it before proposing a feature.
+Status: 0.2.0, public repo, being submitted to WordPress.org (2026-11-24). `.ai/PRD.md` holds the scope and what was left out on purpose, `docs/DECISIONS.md` why things are the way they are: read both before proposing a feature.
+
+**Business documents stay out of this repo.** Prices, competitors, positioning and Pro plans live only in the private repo `nhrrob/nhrrob-social-login-pro`, in its `docs/`. This repo, its issues and its pull requests are public: at most they say that a paid add-on exists.
 
 ## Rules that are specific to this plugin
 
@@ -33,7 +35,9 @@ admin/build/     compiled, committed
 docs/            DECISIONS.md (one row per decision), notes/YYYY-MM-DD.md (one per working session)
 tests/           PHPUnit + WP_Mock
 .github/workflows/php.yml   PHPCS, then per PHP version: syntax, unit tests, smoke test
-.github/workflows/release.yml  when Version changes on main: tag v<version> and a GitHub release with readme.txt's changelog
+.github/workflows/plugin-check.yml  Plugin Check on the files the zip holds
+.github/workflows/deploy-on-pushing-a-new-tag.yml  a v<version> tag goes to WordPress.org
+.github/workflows/deploy-readme-asset-on-pushing-on-trunk.yml  a push to trunk updates the readme and listing images
 .github/ci/smoke.php        runs every read-only ability inside a real WordPress
 ```
 
@@ -76,4 +80,14 @@ The dev copy is in `~/Sites/nhrrob-dev/wp-content/plugins/`. Without a real Goog
 
 ## Releases
 
-Raise `Version` in the header (and the class constant) and `Stable tag`, and add a `= x.y.z =` section under `== Changelog ==` in `readme.txt`. Merging that into `main` runs `release.yml`, which tags `v<version>` and makes the GitHub release. The blog (`nhrrob/nazmulrobin_blog`) requires the plugin by these tags with Composer, so a release reaches it in Dependabot's next pull request.
+Releases are made by hand, as in Secure and Post Insights; nothing is tagged on a version change.
+
+1. On a branch: raise `Version` in the header (and the class constant), `Stable tag` and `package.json`'s `version`, and add a `= x.y.z =` section under `== Changelog ==` in `readme.txt`. Merge it into `main`.
+2. On GitHub, create a release from `main` with a new tag `v<version>` and that version's changelog as its notes. The tag push runs `deploy-on-pushing-a-new-tag.yml`, which sends the version to WordPress.org with the `SVN_USERNAME` and `SVN_PASSWORD` secrets. Until WordPress.org approves the plugin and the secrets are set, that run fails; the tag and release still work for the blog.
+3. To change only the readme or the listing's images, push to `trunk`. Bring `trunk` up to `main` after each release.
+
+The blog (`nhrrob/nazmulrobin_blog`) requires the plugin by these tags with Composer, so a release reaches it in Dependabot's next pull request.
+
+## WordPress.org listing
+
+`.wordpress-org/` holds the icon, banners and screenshots. The icon and banners are made from `docs/wporg/icon.html` and `banner.html` with `node docs/wporg/render.mjs` (Playwright). Screenshots come from the local dev site with sample data, never from production, one of them in dark mode.

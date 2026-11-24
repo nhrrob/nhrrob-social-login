@@ -16,7 +16,18 @@ if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
  * @return void
  */
 function nhrrob_social_login_uninstall_site() {
+	global $wpdb;
+
 	delete_option( 'nhrrob_social_login_settings' );
+
+	// Sign-ins still in progress: ten-minute transients named after a hash.
+	$wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- once, on uninstall; transients have no API to delete by prefix.
+		$wpdb->prepare(
+			"DELETE FROM {$wpdb->options} WHERE option_name LIKE %s OR option_name LIKE %s",
+			$wpdb->esc_like( '_transient_nhrrob_social_login_' ) . '%',
+			$wpdb->esc_like( '_transient_timeout_nhrrob_social_login_' ) . '%'
+		)
+	);
 }
 
 if ( is_multisite() ) {
