@@ -1,5 +1,5 @@
 /**
- * App shell: a sidebar with the sections grouped, the Google status card,
+ * App shell: a sidebar with the sections grouped, the sign-in status card,
  * and a top bar with where you are and the theme switch.
  */
 import { useState, useEffect } from '@wordpress/element';
@@ -128,12 +128,9 @@ export default function AppShell( {
 								}
 							/>
 							{ connection.ok
-								? __(
-										'Google sign-in on',
-										'nhrrob-social-login'
-								  )
+								? __( 'Sign-in on', 'nhrrob-social-login' )
 								: __(
-										'Google not set up',
+										'No provider on',
 										'nhrrob-social-login'
 								  ) }
 						</span>

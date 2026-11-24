@@ -1199,3 +1199,58 @@ html:has(.#{$p}-app[data-theme='dark']) #wpfooter {
 	font-size: 13px;
 	color: var(--sl-muted);
 }
+
+/* ---- Providers: one card each ---- */
+.#{$p}-provider {
+	.#{$p}-panel__head {
+		gap: 12px;
+	}
+
+	&__switch {
+		margin-left: auto;
+		display: inline-flex;
+	}
+
+	&__body {
+		display: flex;
+		flex-direction: column;
+		gap: 14px;
+	}
+
+	&__fields {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+		gap: 14px;
+	}
+
+	&__config summary {
+		cursor: pointer;
+		font-size: 13px;
+		color: var(--sl-muted);
+		margin-bottom: 8px;
+	}
+
+	&:not(.is-on) .#{$p}-panel__head {
+		border-bottom: 0;
+	}
+}
+
+.#{$p}-savebar {
+	position: sticky;
+	bottom: 0;
+	z-index: 2;
+	display: flex;
+	justify-content: flex-end;
+	padding: 12px 0;
+	background: linear-gradient(transparent, var(--sl-bg) 40%);
+}
+
+.#{$p}-extras {
+	display: flex;
+	flex-direction: column;
+	gap: 18px;
+}
+
+.#{$p}-select {
+	max-width: 320px;
+}

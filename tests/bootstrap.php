@@ -10,6 +10,9 @@
 
 define( 'ABSPATH', __DIR__ . '/' );
 
+// No allow-list: Accounts::in_domains() is tested on its own.
+define( 'NHRROB_SOCIAL_LOGIN_ALLOWED_DOMAINS', '' );
+
 require_once dirname( __DIR__ ) . '/vendor/autoload.php';
 
 WP_Mock::bootstrap();
@@ -52,6 +55,15 @@ if ( ! class_exists( 'WP_Error' ) ) {
 		 */
 		public function get_error_message() {
 			return $this->message;
+		}
+
+		/**
+		 * The code.
+		 *
+		 * @return string
+		 */
+		public function get_error_code() {
+			return $this->code;
 		}
 	}
 }
