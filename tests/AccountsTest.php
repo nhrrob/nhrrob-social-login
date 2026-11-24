@@ -33,6 +33,7 @@ class AccountsTest extends TestCase {
 			'email'      => 'reader@example.com',
 			'name'       => 'A Reader',
 			'given_name' => 'A',
+			'picture'    => '',
 		];
 	}
 
@@ -50,7 +51,7 @@ class AccountsTest extends TestCase {
 		WP_Mock::userFunction( 'wp_insert_user' )->never();
 
 		$new = true;
-		$this->assertSame( $linked, Accounts::user_for( $this->identity(), true, $new ) );
+		$this->assertSame( $linked, Accounts::user_for( $this->identity(), Login::META_SUB, true, $new ) );
 		$this->assertFalse( $new );
 	}
 
@@ -61,7 +62,7 @@ class AccountsTest extends TestCase {
 		WP_Mock::userFunction( 'update_user_meta' )->once()->with( 3, Login::META_SUB, 'google-1' );
 		WP_Mock::userFunction( 'wp_insert_user' )->never();
 
-		$this->assertSame( $user, Accounts::user_for( $this->identity(), false ) );
+		$this->assertSame( $user, Accounts::user_for( $this->identity(), Login::META_SUB, false ) );
 	}
 
 	public function testAUserLinkedToAnotherGoogleAccountIsNotTakenOver() {
@@ -69,7 +70,7 @@ class AccountsTest extends TestCase {
 		WP_Mock::userFunction( 'get_user_meta' )->andReturn( 'google-other' );
 		WP_Mock::userFunction( 'update_user_meta' )->never();
 
-		$error = Accounts::user_for( $this->identity(), true );
+		$error = Accounts::user_for( $this->identity(), Login::META_SUB, true );
 
 		$this->assertInstanceOf( \WP_Error::class, $error );
 		$this->assertSame( 'linked_other', $error->code );
@@ -78,7 +79,7 @@ class AccountsTest extends TestCase {
 	public function testWithoutPermissionNoAccountIsCreated() {
 		WP_Mock::userFunction( 'wp_insert_user' )->never();
 
-		$error = Accounts::user_for( $this->identity(), false );
+		$error = Accounts::user_for( $this->identity(), Login::META_SUB, false );
 
 		$this->assertInstanceOf( \WP_Error::class, $error );
 		$this->assertSame( 'no_account', $error->code );
@@ -100,11 +101,81 @@ class AccountsTest extends TestCase {
 			]
 		)->andReturn( 12 );
 		WP_Mock::userFunction( 'update_user_meta' )->once()->with( 12, Login::META_SUB, 'google-1' );
+		WP_Mock::userFunction( 'update_user_meta' )->once()->with( 12, Accounts::META_PASSWORD, 1 );
 		WP_Mock::userFunction( 'get_user_by' )->with( 'id', 12 )->andReturn( $created );
 
 		$new = false;
-		$this->assertSame( $created, Accounts::user_for( $this->identity(), true, $new ) );
+		$this->assertSame( $created, Accounts::user_for( $this->identity(), Login::META_SUB, true, $new ) );
 		$this->assertTrue( $new );
+	}
+
+	public function testANewAccountGetsTheRoleItIsGiven() {
+		WP_Mock::userFunction( 'sanitize_user' )->andReturnArg( 0 );
+		WP_Mock::userFunction( 'username_exists' )->andReturn( false );
+		WP_Mock::userFunction( 'wp_generate_password' )->andReturn( 'p' );
+		WP_Mock::userFunction( 'wp_insert_user' )->once()->with( \Mockery::on( function ( $user ) { return 'customer' === $user['role']; } ) )->andReturn( 5 );
+		WP_Mock::userFunction( 'update_user_meta' );
+		WP_Mock::userFunction( 'get_user_by' )->with( 'id', 5 )->andReturn( $this->user( 5 ) );
+
+		$this->assertSame( 5, Accounts::user_for( $this->identity(), Login::META_SUB, true, $new, 'customer' )->ID );
+	}
+
+	public function testASignInLinkByEmailLinksNothing() {
+		$user = $this->user( 3 );
+		WP_Mock::userFunction( 'get_users' )->never();
+		WP_Mock::userFunction( 'get_user_by' )->with( 'email', 'reader@example.com' )->andReturn( $user );
+		WP_Mock::userFunction( 'update_user_meta' )->never();
+
+		$identity        = $this->identity();
+		$identity['sub'] = '';
+
+		$this->assertSame( $user, Accounts::user_for( $identity, '', false ) );
+	}
+
+	public function testAnAddressOutsideTheAllowedDomainsIsRefused() {
+		WP_Mock::onFilter( 'nhrrob_social_login_domain_allowed' )->with( true, 'reader@example.com', null )->reply( false );
+		WP_Mock::userFunction( 'wp_insert_user' )->never();
+
+		$this->assertSame( 'domain', Accounts::user_for( $this->identity(), Login::META_SUB, true )->code );
+	}
+
+	public function testDomainsMatchExactly() {
+		$this->assertTrue( Accounts::in_domains( 'a@example.com', [] ) );
+		$this->assertTrue( Accounts::in_domains( 'a@Example.COM', [ 'example.com' ] ) );
+		$this->assertFalse( Accounts::in_domains( 'a@mail.example.com', [ 'example.com' ] ) );
+		$this->assertFalse( Accounts::in_domains( 'a@example.com.evil.test', [ 'example.com' ] ) );
+		$this->assertFalse( Accounts::in_domains( 'no-at-sign', [ 'example.com' ] ) );
+	}
+
+	public function testRolesThatManageOrWriteAreNotGivenByDefault() {
+		$roles = [
+			'subscriber'    => [ 'read' ],
+			'author'        => [ 'read', 'edit_posts' ],
+			'administrator' => [ 'read', 'edit_posts', 'manage_options' ],
+			'shop_manager'  => [ 'read', 'edit_users' ],
+		];
+		WP_Mock::userFunction( 'get_role' )->andReturnUsing(
+			function ( $name ) use ( $roles ) {
+				if ( ! isset( $roles[ $name ] ) ) {
+					return null;
+				}
+				$caps = $roles[ $name ];
+				$role = \Mockery::mock();
+				$role->shouldReceive( 'has_cap' )->andReturnUsing(
+					function ( $cap ) use ( $caps ) {
+						return in_array( $cap, $caps, true );
+					}
+				);
+				return $role;
+			}
+		);
+
+		$this->assertTrue( Accounts::safe_role( 'subscriber', false ) );
+		$this->assertFalse( Accounts::safe_role( 'author', false ) );
+		$this->assertTrue( Accounts::safe_role( 'author', true ) );
+		$this->assertFalse( Accounts::safe_role( 'administrator', true ) );
+		$this->assertFalse( Accounts::safe_role( 'shop_manager', true ) );
+		$this->assertFalse( Accounts::safe_role( 'missing', true ) );
 	}
 
 	public function testATakenUsernameGetsANumber() {

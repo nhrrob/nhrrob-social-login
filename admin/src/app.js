@@ -9,7 +9,9 @@ import api from './api';
 import AppShell from './components/AppShell';
 import { ToastProvider } from './components/ToastProvider';
 import { Loading, Note } from './components/ui';
-import Setup from './screens/Setup';
+import Accounts from './screens/Accounts';
+import Extras from './screens/Extras';
+import Providers from './screens/Providers';
 
 export default function App( { boot } ) {
 	const [ active, setActive ] = useState( 'setup' );
@@ -36,13 +38,23 @@ export default function App( { boot } ) {
 				items: [
 					{
 						id: 'setup',
+						icon: 'key',
+						label: __( 'Providers', 'nhrrob-social-login' ),
+					},
+					{
+						id: 'accounts',
+						icon: 'user',
+						label: __( 'Accounts', 'nhrrob-social-login' ),
+					},
+					{
+						id: 'extras',
 						icon: 'settings',
-						label: __( 'Setup', 'nhrrob-social-login' ),
+						label: __( 'Extras', 'nhrrob-social-login' ),
 					},
 				],
 			},
 		],
-		screens: { setup: Setup },
+		screens: { setup: Providers, accounts: Accounts, extras: Extras },
 	} );
 
 	let connection = null;
@@ -51,7 +63,7 @@ export default function App( { boot } ) {
 			ok: data.ready,
 			line: data.ready
 				? sprintf(
-						/* translators: %d: number of users linked to a Google account. */
+						/* translators: %d: number of users linked to a provider. */
 						_n(
 							'%d linked user',
 							'%d linked users',
@@ -60,11 +72,11 @@ export default function App( { boot } ) {
 						),
 						data.linked_users
 				  )
-				: __( 'Add a client ID and secret.', 'nhrrob-social-login' ),
+				: __( 'Switch on a provider.', 'nhrrob-social-login' ),
 		};
 	}
 
-	const Screen = screens[ active ] || Setup;
+	const Screen = screens[ active ] || Providers;
 
 	let content = <Loading />;
 	if ( failed ) {

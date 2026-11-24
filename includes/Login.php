@@ -1,12 +1,14 @@
 <?php
 /**
- * The "Continue with Google" buttons, and the sign-in they start: off to
- * Google and back through admin-post.php, then logged in.
+ * The sign-in a button starts: off to the provider and back, then logged in
+ * (or, from the profile screen, the account linked).
  *
  * @package NHRRob\SocialLogin
  */
 
 namespace NHRRob\SocialLogin;
+
+use NHRRob\SocialLogin\Providers\Provider;
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
@@ -15,13 +17,13 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Login Class
  *
- * One admin-post action does both halves: without `code` it sends the
- * person to Google, with `code` it finishes the sign-in. admin-post.php is
- * used because it answers logged-out visitors on every site, including one
- * whose login page has been moved.
+ * The address admin-post.php?action=nhrrob_social_login starts every
+ * sign-in, and is also where Google answers. The other providers answer at Callback::url().
+ * admin-post.php is used because it answers logged-out visitors on every
+ * site, including one whose login page has been moved.
  *
  * A sign-in in progress is a transient named after the hash of a random
- * value kept in a short-lived cookie. Google returns the same value as
+ * value kept in a short-lived cookie. The provider returns the same value as
  * `state`, so an answer is accepted only in the browser that started it.
  */
 class Login {
@@ -31,27 +33,14 @@ class Login {
 	const META_SUB = 'nhrrob_social_login_google_sub';
 
 	/**
+	 * Where a sign-in can start.
+	 */
+	const SOURCES = [ 'login', 'comment', 'button', 'woocommerce', 'profile' ];
+
+	/**
 	 * Seconds a sign-in may take.
 	 */
 	const TTL = 600;
-
-	/**
-	 * What `nhrrob_social_login_button_extra` may print.
-	 */
-	const EXTRA_HTML = [
-		'label' => [
-			'class' => true,
-			'for'   => true,
-		],
-		'input' => [
-			'type'  => true,
-			'class' => true,
-			'id'    => true,
-			'name'  => true,
-			'value' => true,
-		],
-		'span'  => [ 'class' => true ],
-	];
 
 	/**
 	 * Register hooks.
@@ -61,131 +50,78 @@ class Login {
 	public function init() {
 		add_action( 'admin_post_nopriv_' . self::ACTION, [ $this, 'handle' ] );
 		add_action( 'admin_post_' . self::ACTION, [ $this, 'handle' ] );
-		add_action( 'login_form', [ $this, 'login_button' ] );
-		add_action( 'comment_form_top', [ $this, 'comment_button' ] );
 		add_filter( 'login_message', [ $this, 'error_message' ] );
-		add_action( 'login_enqueue_scripts', [ $this, 'styles' ] );
-		add_action( 'wp_enqueue_scripts', [ $this, 'styles' ] );
 	}
 
 	/**
-	 * The button on the login form, returning to where the form would have.
+	 * The address that starts a sign-in.
 	 *
-	 * @return void
-	 */
-	public function login_button() {
-		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- only read to send the person back there.
-		$to = isset( $_REQUEST['redirect_to'] ) ? esc_url_raw( wp_unslash( $_REQUEST['redirect_to'] ) ) : '';
-
-		$this->button( $to, __( 'Continue with Google', 'nhrrob-social-login' ) );
-	}
-
-	/**
-	 * The button above the comment fields, for a visitor who is not logged in.
-	 * It brings them back to the form, logged in.
-	 *
-	 * @return void
-	 */
-	public function comment_button() {
-		if ( is_user_logged_in() || ! Settings::create_accounts() ) {
-			return;
-		}
-
-		$this->button( get_permalink() . '#respond', __( 'Continue with Google to comment', 'nhrrob-social-login' ) );
-	}
-
-	/**
-	 * Print a button.
-	 *
+	 * @param string $provider    Provider ID.
 	 * @param string $redirect_to Where to go after signing in.
-	 * @param string $label       Button text.
-	 * @return void
+	 * @param string $source      Where it starts, one of SOURCES.
+	 * @return string
 	 */
-	private function button( $redirect_to, $label ) {
-		if ( ! Settings::google_ready() ) {
-			return;
+	public static function start_url( $provider, $redirect_to, $source ) {
+		$args = [
+			'action'      => self::ACTION,
+			'provider'    => $provider,
+			'source'      => $source,
+			'redirect_to' => rawurlencode( $redirect_to ),
+		];
+
+		if ( 'profile' === $source ) {
+			$args['_wpnonce'] = wp_create_nonce( self::ACTION . '_link_' . $provider );
 		}
 
-		$url = add_query_arg(
-			array_filter(
-				[
-					'action'      => self::ACTION,
-					'redirect_to' => rawurlencode( $redirect_to ),
-				]
-			),
-			admin_url( 'admin-post.php' )
-		);
-
-		/**
-		 * Extra markup after the button, inside its paragraph: an add-on's
-		 * checkbox, for example. Only labels, checkboxes and spans are kept.
-		 *
-		 * @param string $html        Markup, empty by default.
-		 * @param string $redirect_to Where the button sends the person after signing in.
-		 */
-		$extra = (string) apply_filters( 'nhrrob_social_login_button_extra', '', $redirect_to );
-
-		printf(
-			'<p class="nhrrob-social-login"><a class="nhrrob-social-login__google" href="%1$s">%2$s<span>%3$s</span></a>%5$s<span class="nhrrob-social-login__or">%4$s</span></p>',
-			esc_url( $url ),
-			'<svg aria-hidden="true" width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>',
-			esc_html( $label ),
-			esc_html__( 'or', 'nhrrob-social-login' ),
-			wp_kses( $extra, self::EXTRA_HTML )
-		);
+		return add_query_arg( array_filter( $args ), admin_url( 'admin-post.php' ) );
 	}
 
 	/**
-	 * Styles of the button, on the login page and on posts that take comments.
-	 *
-	 * @return void
-	 */
-	public function styles() {
-		if ( ! Settings::google_ready() || ( 'wp_enqueue_scripts' === current_action() && ! ( is_singular() && comments_open() ) ) ) {
-			return;
-		}
-
-		wp_enqueue_style( 'nhrrob-social-login', plugins_url( 'assets/login.css', NHRROB_SOCIAL_LOGIN_FILE ), [], NHRROB_SOCIAL_LOGIN_VERSION );
-
-		if ( 'login_enqueue_scripts' === current_action() ) {
-			// The login_form hook prints after the password; the script moves the button to the top of the form, above an "or".
-			wp_enqueue_script( 'nhrrob-social-login', plugins_url( 'assets/login.js', NHRROB_SOCIAL_LOGIN_FILE ), [], NHRROB_SOCIAL_LOGIN_VERSION, true );
-		}
-	}
-
-	/**
-	 * Start or finish a sign-in.
+	 * Start a sign-in, or finish Google's.
 	 *
 	 * @return void
 	 */
 	public function handle() {
-		if ( ! Settings::google_ready() ) {
-			$this->fail( 'not_ready' );
+		// phpcs:disable WordPress.Security.NonceVerification.Recommended -- the OAuth state, checked in finish(), does the job of a nonce; linking checks one in start().
+		if ( isset( $_GET['code'] ) || isset( $_GET['state'] ) || isset( $_GET['error'] ) ) {
+			$this->callback( 'google' );
 		}
 
-		// phpcs:disable WordPress.Security.NonceVerification.Recommended -- the OAuth state, checked below, does the job of a nonce.
-		if ( isset( $_GET['error'] ) ) {
-			$this->fail( 'cancelled' );
-		}
-
-		if ( ! isset( $_GET['code'], $_GET['state'] ) ) {
-			$this->start( isset( $_GET['redirect_to'] ) ? esc_url_raw( wp_unslash( $_GET['redirect_to'] ) ) : '' );
-		}
-
-		$this->finish( sanitize_text_field( wp_unslash( $_GET['code'] ) ), sanitize_text_field( wp_unslash( $_GET['state'] ) ) );
+		$provider = Providers::get( isset( $_GET['provider'] ) ? sanitize_key( wp_unslash( $_GET['provider'] ) ) : 'google' );
+		$source   = isset( $_GET['source'] ) ? sanitize_key( wp_unslash( $_GET['source'] ) ) : 'login';
+		$to       = isset( $_GET['redirect_to'] ) ? esc_url_raw( wp_unslash( $_GET['redirect_to'] ) ) : '';
 		// phpcs:enable
+
+		if ( ! $provider || ! $provider->active() ) {
+			self::fail( 'not_ready' );
+		}
+
+		$this->start( $provider, $to, in_array( $source, self::SOURCES, true ) ? $source : 'login' );
 	}
 
 	/**
-	 * Send the person to Google.
+	 * Send the person to the provider.
 	 *
-	 * @param string $redirect_to Where to go after signing in.
+	 * @param Provider $provider    Provider.
+	 * @param string   $redirect_to Where to go after signing in.
+	 * @param string   $source      Where it started.
 	 * @return void
 	 */
-	private function start( $redirect_to ) {
-		$state    = Google::random();
-		$nonce    = Google::random();
-		$verifier = Google::random();
+	private function start( Provider $provider, $redirect_to, $source ) {
+		$link_user = 0;
+
+		if ( 'profile' === $source ) {
+			check_admin_referer( self::ACTION . '_link_' . $provider->id() );
+			$link_user = get_current_user_id();
+
+			if ( ! $link_user ) {
+				self::fail( 'expired' );
+			}
+		}
+
+		$state    = Jwt::random();
+		$nonce    = Jwt::random();
+		$verifier = Jwt::random();
 
 		/**
 		 * Data an add-on keeps for the length of a sign-in, read from the
@@ -200,9 +136,12 @@ class Login {
 		set_transient(
 			self::key( $state ),
 			[
+				'provider'    => $provider->id(),
 				'nonce'       => $nonce,
 				'verifier'    => $verifier,
 				'redirect_to' => $redirect_to,
+				'source'      => $source,
+				'link_user'   => $link_user,
 				'data'        => $data,
 			],
 			self::TTL
@@ -217,23 +156,100 @@ class Login {
 				'domain'   => COOKIE_DOMAIN,
 				'secure'   => is_ssl(),
 				'httponly' => true,
-				// Lax still sends it on Google's top-level redirect back.
+				// Lax still sends it on the provider's top-level redirect back.
 				'samesite' => 'Lax',
 			]
 		);
 
-		wp_redirect( Google::auth_url( $state, $nonce, Google::challenge( $verifier ) ) ); // phpcs:ignore WordPress.Security.SafeRedirect.wp_redirect_wp_redirect -- Google's sign-in page, a fixed address.
+		wp_redirect( $provider->auth_url( $state, $nonce, Jwt::challenge( $verifier ) ) ); // phpcs:ignore WordPress.Security.SafeRedirect.wp_redirect_wp_redirect -- the provider's sign-in page, a fixed address.
 		exit;
 	}
 
 	/**
-	 * Finish the sign-in Google answered.
+	 * A provider sent the person back.
 	 *
-	 * @param string $code  Authorization code.
-	 * @param string $state State Google returned.
+	 * @param string $id Provider ID.
 	 * @return void
 	 */
-	private function finish( $code, $state ) {
+	public function callback( $id ) {
+		$provider = Providers::get( $id );
+
+		if ( ! $provider || ! $provider->active() ) {
+			self::fail( 'not_ready' );
+		}
+
+		// phpcs:disable WordPress.Security.NonceVerification -- the OAuth state, checked in finish(), does the job of a nonce.
+		if ( $provider->posts_back() && isset( $_POST['state'] ) ) {
+			$this->posted_back( $provider );
+		}
+
+		if ( isset( $_GET['error'] ) ) {
+			self::fail( 'cancelled' );
+		}
+
+		if ( ! isset( $_GET['code'], $_GET['state'] ) ) {
+			self::fail( 'expired' );
+		}
+
+		$this->finish( $provider, sanitize_text_field( wp_unslash( $_GET['code'] ) ), sanitize_text_field( wp_unslash( $_GET['state'] ) ) );
+		// phpcs:enable
+	}
+
+	/**
+	 * Apple answers with a cross-site POST, which leaves out the SameSite=Lax
+	 * state cookie. Keep the name Apple sends only this once with the sign-in
+	 * in progress, and come back here with a GET, which carries the cookie.
+	 *
+	 * @param Provider $provider Provider.
+	 * @return void
+	 */
+	private function posted_back( Provider $provider ) {
+		// phpcs:disable WordPress.Security.NonceVerification.Missing -- the OAuth state does the job of a nonce, and is checked with the cookie in finish().
+		$state = isset( $_POST['state'] ) ? sanitize_text_field( wp_unslash( $_POST['state'] ) ) : '';
+
+		if ( isset( $_POST['error'] ) || ! isset( $_POST['code'] ) ) {
+			self::fail( 'cancelled' );
+		}
+
+		$saved = '' !== $state ? get_transient( self::key( $state ) ) : false;
+
+		if ( is_array( $saved ) && isset( $_POST['user'] ) ) {
+			$user = json_decode( sanitize_text_field( wp_unslash( $_POST['user'] ) ), true );
+
+			if ( isset( $user['name'] ) && is_array( $user['name'] ) ) {
+				$saved['given_name'] = isset( $user['name']['firstName'] ) ? sanitize_text_field( (string) $user['name']['firstName'] ) : '';
+				$saved['name']       = trim( $saved['given_name'] . ' ' . ( isset( $user['name']['lastName'] ) ? sanitize_text_field( (string) $user['name']['lastName'] ) : '' ) );
+				set_transient( self::key( $state ), $saved, self::TTL );
+			}
+		}
+
+		$code = sanitize_text_field( wp_unslash( $_POST['code'] ) );
+		// phpcs:enable
+
+		wp_safe_redirect(
+			add_query_arg(
+				rawurlencode_deep(
+					[
+						'code'  => $code,
+						'state' => $state,
+					]
+				),
+				$provider->redirect_uri()
+			),
+			303
+		);
+		exit;
+	}
+
+	/**
+	 * Finish the sign-in the provider answered.
+	 *
+	 * @param Provider $provider Provider.
+	 * @param string   $code     Authorization code.
+	 * @param string   $state    State the provider returned.
+	 * @return void
+	 */
+	private function finish( Provider $provider, $code, $state ) {
 		$cookie = isset( $_COOKIE[ self::COOKIE ] ) ? sanitize_text_field( wp_unslash( $_COOKIE[ self::COOKIE ] ) ) : '';
 		$saved  = '' !== $state ? get_transient( self::key( $state ) ) : false;
 
@@ -241,51 +257,77 @@ class Login {
 		delete_transient( self::key( $state ) );
 		setcookie( self::COOKIE, '', time() - HOUR_IN_SECONDS, COOKIEPATH ? COOKIEPATH : '/', COOKIE_DOMAIN, is_ssl(), true );
 
-		if ( ! is_array( $saved ) || '' === $cookie || ! hash_equals( $cookie, $state ) ) {
-			$this->fail( 'expired' );
+		if ( ! is_array( $saved ) || '' === $cookie || ! hash_equals( $cookie, $state ) || ! isset( $saved['provider'] ) || $provider->id() !== $saved['provider'] ) {
+			self::fail( 'expired' );
 		}
 
-		$identity = Google::identity( $code, $saved['verifier'], $saved['nonce'] );
+		$identity = $provider->identity( $code, $saved['verifier'], $saved['nonce'] );
 
 		if ( is_wp_error( $identity ) ) {
-			$this->fail( 'google' );
+			self::fail( 'nhrrob_social_login_email' === $identity->get_error_code() ? 'unverified' : 'provider' );
+		}
+
+		foreach ( [ 'name', 'given_name' ] as $field ) {
+			if ( '' === $identity[ $field ] && ! empty( $saved[ $field ] ) ) {
+				$identity[ $field ] = $saved[ $field ];
+			}
+		}
+
+		if ( ! empty( $saved['link_user'] ) ) {
+			Profile::link( (int) $saved['link_user'], $provider, $identity );
 		}
 
 		$created = false;
-		$user    = Accounts::user_for( $identity, Settings::create_accounts(), $created );
+		$user    = Accounts::user_for( $identity, $provider->meta_key(), Settings::create_accounts(), $created, Accounts::new_role( $saved['source'] ) );
 
 		if ( is_wp_error( $user ) ) {
-			$this->fail( $user->get_error_code() );
+			self::fail( $user->get_error_code() );
 		}
 
-		// Two-factor is left to Google, which already checked the account.
+		self::log_in( $user, $provider->id(), $created, $saved['redirect_to'], $saved['source'], isset( $saved['data'] ) && is_array( $saved['data'] ) ? $saved['data'] : [] );
+	}
+
+	/**
+	 * Log a user in and send them on. Every way in ends here: a provider,
+	 * One Tap and a sign-in link by email.
+	 *
+	 * @param \WP_User $user        User.
+	 * @param string   $provider    Provider ID, or 'email'.
+	 * @param bool     $created     Whether the account was made for this sign-in.
+	 * @param string   $redirect_to Where the sign-in asked to go.
+	 * @param string   $source      Where it started.
+	 * @param array    $data        What `nhrrob_social_login_start_data` kept when the sign-in started.
+	 * @return void
+	 */
+	public static function log_in( $user, $provider, $created, $redirect_to, $source, $data = [] ) {
+		// Two-factor is left to the provider, which already checked the account.
 		wp_set_current_user( $user->ID );
 		wp_set_auth_cookie( $user->ID, true );
 
 		/** This action is documented in wp-includes/user.php */
 		do_action( 'wp_login', $user->user_login, $user ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- WordPress's own login event, so activity logs and login alerts see this sign-in.
 
-		$fallback = user_can( $user, 'edit_posts' ) ? admin_url() : home_url( '/' );
-
-		// wp_validate_redirect() returns an empty address as it is, not the fallback.
-		$to = '' !== $saved['redirect_to'] ? wp_validate_redirect( $saved['redirect_to'], $fallback ) : $fallback;
+		$to = self::destination( $user, $created, $redirect_to, $source );
 
 		/**
 		 * After someone signed in with a social account and was logged in.
 		 *
 		 * @param \WP_User $user    The user who signed in.
-		 * @param array    $context `provider` ('google'), `created` (whether the account was made for this sign-in),
+		 * @param array    $context `provider` (such as 'google', or 'email' for a sign-in link),
+		 *                          `created` (whether the account was made for this sign-in),
 		 *                          `redirect_to` (where they are sent next: the post for a sign-in from a comment form)
+		 *                          `source` (login, comment, button, woocommerce, onetap or email)
 		 *                          and `data` (what `nhrrob_social_login_start_data` kept when the sign-in started).
 		 */
 		do_action(
 			'nhrrob_social_login_signed_in',
 			$user,
 			[
-				'provider'    => 'google',
+				'provider'    => $provider,
 				'created'     => $created,
 				'redirect_to' => $to,
-				'data'        => isset( $saved['data'] ) && is_array( $saved['data'] ) ? $saved['data'] : [],
+				'source'      => $source,
+				'data'        => $data,
 			]
 		);
 
@@ -294,12 +336,43 @@ class Login {
 	}
 
 	/**
+	 * Where a user goes after signing in. From the login form, a new account
+	 * goes to the sign-up address, and anyone else who was not sent to a
+	 * particular page goes to the login address, when those are set.
+	 * Everywhere else, back where the sign-in started, such as the post for
+	 * a comment form.
+	 *
+	 * @param \WP_User $user        User.
+	 * @param bool     $created     Whether the account is new.
+	 * @param string   $redirect_to Where the sign-in asked to go.
+	 * @param string   $source      Where it started.
+	 * @return string
+	 */
+	public static function destination( $user, $created, $redirect_to, $source ) {
+		$fallback = user_can( $user, 'edit_posts' ) ? admin_url() : home_url( '/' );
+
+		if ( 'login' === $source ) {
+			$signup = (string) Settings::value( 'signup_redirect' );
+			$login  = (string) Settings::value( 'login_redirect' );
+
+			if ( $created && '' !== $signup ) {
+				$redirect_to = $signup;
+			} elseif ( ( '' === $redirect_to || admin_url() === $redirect_to ) && '' !== $login ) {
+				$redirect_to = $login;
+			}
+		}
+
+		// wp_validate_redirect() returns an empty address as it is, not the fallback.
+		return '' !== $redirect_to ? wp_validate_redirect( $redirect_to, $fallback ) : $fallback;
+	}
+
+	/**
 	 * Send the person to the login page with a message.
 	 *
 	 * @param string $code Error code.
 	 * @return void
 	 */
-	private function fail( $code ) {
+	public static function fail( $code ) {
 		wp_safe_redirect( add_query_arg( self::ACTION . '_error', rawurlencode( $code ), wp_login_url() ) );
 		exit;
 	}
@@ -319,12 +392,15 @@ class Login {
 		}
 
 		$texts = [
-			'no_account'   => __( 'There is no account with the email address of that Google account.', 'nhrrob-social-login' ),
-			'linked_other' => __( 'The account with that email address is linked to a different Google account. Log in with your password instead.', 'nhrrob-social-login' ),
-			'cancelled'    => __( 'Signing in with Google was cancelled.', 'nhrrob-social-login' ),
+			'no_account'   => __( 'There is no account with the email address of that account.', 'nhrrob-social-login' ),
+			'linked_other' => __( 'The account with that email address is linked to a different account at that provider. Log in another way instead.', 'nhrrob-social-login' ),
+			'cancelled'    => __( 'Signing in was cancelled.', 'nhrrob-social-login' ),
 			'expired'      => __( 'That sign-in took too long or was started in another browser. Please try again.', 'nhrrob-social-login' ),
+			'unverified'   => __( 'That account has no verified email address, so it cannot sign in here.', 'nhrrob-social-login' ),
+			'domain'       => __( 'Only email addresses from this site\'s allowed domains can sign in here.', 'nhrrob-social-login' ),
+			'link_used'    => __( 'That sign-in link has expired or was already used. Ask for a new one.', 'nhrrob-social-login' ),
 		];
-		$text  = isset( $texts[ $code ] ) ? $texts[ $code ] : __( 'Signing in with Google did not work. Please try again.', 'nhrrob-social-login' );
+		$text  = isset( $texts[ $code ] ) ? $texts[ $code ] : __( 'Signing in did not work. Please try again.', 'nhrrob-social-login' );
 
 		return $message . '<div id="login_error" class="notice notice-error"><p>' . esc_html( $text ) . '</p></div>';
 	}

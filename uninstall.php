@@ -20,7 +20,7 @@ function nhrrob_social_login_uninstall_site() {
 
 	delete_option( 'nhrrob_social_login_settings' );
 
-	// Sign-ins still in progress: ten-minute transients named after a hash.
+	// Sign-ins and sign-in links in progress, request counts and Google's keys: transients.
 	$wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- once, on uninstall; transients have no API to delete by prefix.
 		$wpdb->prepare(
 			"DELETE FROM {$wpdb->options} WHERE option_name LIKE %s OR option_name LIKE %s",
@@ -45,5 +45,11 @@ if ( is_multisite() ) {
 	nhrrob_social_login_uninstall_site();
 }
 
-// Users are shared by the network: the links to their Google accounts go once. The accounts stay.
-delete_metadata( 'user', 0, 'nhrrob_social_login_google_sub', '', true );
+// Users are shared by the network: their links to providers, pictures and flags go once. The accounts stay.
+foreach ( [ 'google', 'microsoft', 'apple', 'github', 'facebook', 'x', 'linkedin' ] as $nhrrob_social_login_provider ) {
+	delete_metadata( 'user', 0, 'nhrrob_social_login_' . $nhrrob_social_login_provider . '_sub', '', true );
+}
+
+foreach ( [ 'picture', 'gravatar', 'no_password' ] as $nhrrob_social_login_meta ) {
+	delete_metadata( 'user', 0, 'nhrrob_social_login_' . $nhrrob_social_login_meta, '', true );
+}

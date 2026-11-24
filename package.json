@@ -6,9 +6,9 @@
 	"license": "GPL-2.0-or-later",
 	"private": true,
 	"scripts": {
-		"start": "wp-scripts start admin/src/index.js --output-path=admin/build",
-		"build": "wp-scripts build admin/src/index.js --output-path=admin/build",
-		"lint:js": "wp-scripts lint-js admin/src assets/login.js"
+		"start": "wp-scripts start index=./admin/src/index.js block=./admin/src/block/index.js --output-path=admin/build",
+		"build": "wp-scripts build index=./admin/src/index.js block=./admin/src/block/index.js --output-path=admin/build",
+		"lint:js": "wp-scripts lint-js admin/src assets/login.js assets/onetap.js"
 	},
 	"devDependencies": {
 		"@wordpress/scripts": "^30.0.0"

@@ -14,8 +14,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * What AI agents and MCP clients may ask the plugin (WordPress 6.9+).
  *
- * Read-only: whether Google sign-in is set up and how many accounts use it.
- * Never the client secret, an email address or a username.
+ * Read-only: which providers are set up and how many accounts use them.
+ * Never a secret, an email address or a username.
  */
 class Abilities {
 
@@ -43,7 +43,7 @@ class Abilities {
 				self::CATEGORY,
 				[
 					'label'       => __( 'Social Login', 'nhrrob-social-login' ),
-					'description' => __( 'Logging in, and commenting, with a Google account.', 'nhrrob-social-login' ),
+					'description' => __( 'Logging in, and commenting, with Google and other accounts.', 'nhrrob-social-login' ),
 				]
 			);
 		}
@@ -71,7 +71,7 @@ class Abilities {
 		return [
 			'nhrrob-social-login/get-status' => [
 				'label'               => __( 'Get social login status', 'nhrrob-social-login' ),
-				'description'         => __( 'Returns whether Google sign-in is set up (client ID and secret present, and whether each comes from wp-config.php), whether a new Google user gets a subscriber account, the redirect URI to register with Google, and how many users are linked to a Google account.', 'nhrrob-social-login' ),
+				'description'         => __( 'Returns each sign-in provider (Google, Microsoft, Apple, GitHub, Facebook, X, LinkedIn): whether it is on and set up, whether each credential is set and comes from wp-config.php, and the redirect URI to register with it. Also whether new users get an account and with which role, the other options, and how many users are linked to a provider.', 'nhrrob-social-login' ),
 				'category'            => self::CATEGORY,
 				'output_schema'       => [ 'type' => 'object' ],
 				'execute_callback'    => [ $this, 'get_status' ],
@@ -95,17 +95,36 @@ class Abilities {
 	 * @return array
 	 */
 	public function get_status() {
+		$state     = Rest::state();
+		$providers = [];
+
+		foreach ( $state['providers'] as $provider ) {
+			$fields = [];
+
+			foreach ( $provider['fields'] as $field ) {
+				$fields[ $field['name'] ] = [
+					'set'       => $field['set'],
+					'in_config' => $field['in_config'],
+				];
+			}
+
+			$providers[ $provider['id'] ] = [
+				'enabled'      => $provider['enabled'],
+				'ready'        => $provider['ready'],
+				'active'       => $provider['active'],
+				'redirect_uri' => $provider['redirect_uri'],
+				'fields'       => $fields,
+			];
+		}
+
+		$settings = $state['settings'];
+		unset( $settings['allowed_domains'], $settings['login_redirect'], $settings['signup_redirect'] );
+
 		return [
-			'google'          => [
-				'ready'            => Settings::google_ready(),
-				'client_id_set'    => '' !== Settings::client_id(),
-				'secret_set'       => '' !== Settings::client_secret(),
-				'id_in_config'     => Settings::id_in_config(),
-				'secret_in_config' => Settings::secret_in_config(),
-				'redirect_uri'     => Settings::redirect_uri(),
-			],
-			'create_accounts' => Settings::create_accounts(),
-			'linked_users'    => Accounts::linked_count(),
+			'providers'       => $providers,
+			'settings'        => $settings,
+			'allowed_domains' => count( Settings::allowed_domains() ),
+			'linked_users'    => $state['linked_users'],
 		];
 	}
 }

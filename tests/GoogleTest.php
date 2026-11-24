@@ -1,7 +1,8 @@
 <?php
 namespace NHRRob\SocialLogin\Tests;
 
-use NHRRob\SocialLogin\Google;
+use NHRRob\SocialLogin\Jwt;
+use NHRRob\SocialLogin\Providers\Google;
 use PHPUnit\Framework\TestCase;
 use WP_Mock;
 
@@ -20,6 +21,7 @@ class GoogleTest extends TestCase {
 		WP_Mock::userFunction( '__' )->andReturnArg( 0 );
 		WP_Mock::passthruFunction( 'sanitize_email' );
 		WP_Mock::passthruFunction( 'sanitize_text_field' );
+		WP_Mock::passthruFunction( 'esc_url_raw' );
 		WP_Mock::userFunction( 'is_email' )->andReturnUsing(
 			function ( $email ) {
 				return false !== filter_var( $email, FILTER_VALIDATE_EMAIL );
@@ -43,6 +45,7 @@ class GoogleTest extends TestCase {
 				'email_verified' => true,
 				'name'           => 'A Reader',
 				'given_name'     => 'A',
+				'picture'        => 'https://lh3.googleusercontent.com/a/photo=s96-c',
 			],
 			$changes
 		);
@@ -59,6 +62,7 @@ class GoogleTest extends TestCase {
 				'email'      => 'reader@example.com',
 				'name'       => 'A Reader',
 				'given_name' => 'A',
+				'picture'    => 'https://lh3.googleusercontent.com/a/photo=s96-c',
 			],
 			$this->check( $this->claims() )
 		);
@@ -111,22 +115,26 @@ class GoogleTest extends TestCase {
 		$this->assertInstanceOf( \WP_Error::class, Google::check_claims( $this->claims( [ 'aud' => '' ] ), '', self::NONCE, self::NOW ) );
 	}
 
+	public function testAPictureThatIsNotHttpsIsDropped() {
+		$this->assertSame( '', $this->check( $this->claims( [ 'picture' => 'javascript:alert(1)' ] ) )['picture'] );
+	}
+
 	public function testTheClaimsAreReadFromTheToken() {
 		$payload = rtrim( strtr( base64_encode( json_encode( [ 'sub' => '42' ] ) ), '+/', '-_' ), '=' );
 
-		$this->assertSame( [ 'sub' => '42' ], Google::claims( 'header.' . $payload . '.signature' ) );
-		$this->assertSame( [], Google::claims( 'not-a-token' ) );
+		$this->assertSame( [ 'sub' => '42' ], Jwt::claims( 'header.' . $payload . '.signature' ) );
+		$this->assertSame( [], Jwt::claims( 'not-a-token' ) );
 	}
 
 	public function testThePkceChallengeIsS256() {
 		// The example in RFC 7636, appendix B.
-		$this->assertSame( 'E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM', Google::challenge( 'dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk' ) );
+		$this->assertSame( 'E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM', Jwt::challenge( 'dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk' ) );
 	}
 
 	public function testRandomValuesAreLongAndUrlSafe() {
-		$value = Google::random();
+		$value = Jwt::random();
 
 		$this->assertMatchesRegularExpression( '/^[A-Za-z0-9_-]{43}$/', $value );
-		$this->assertNotSame( $value, Google::random() );
+		$this->assertNotSame( $value, Jwt::random() );
 	}
 }

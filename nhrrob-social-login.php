@@ -2,7 +2,7 @@
 /**
  * Plugin Name: NHR Social Login
  * Plugin URI: https://github.com/nhrrob/nhrrob-social-login
- * Description: Log in, and comment, with a Google account.
+ * Description: Log in, and comment, with Google, Microsoft, Apple, GitHub, Facebook, X, LinkedIn or a link by email.
  * Author: Nazmul Hasan Robin
  * Author URI: https://profiles.wordpress.org/nhrrob/
  * Version: 0.3.0
@@ -59,14 +59,33 @@ final class NHRRob_Social_Login {
 	}
 
 	/**
-	 * Initialize the plugin: the buttons, the sign-in flow, the abilities, the settings app and its routes.
+	 * Features started on every request, one class each.
+	 */
+	const FEATURES = [
+		\NHRRob\SocialLogin\Login::class,
+		\NHRRob\SocialLogin\Callback::class,
+		\NHRRob\SocialLogin\Buttons::class,
+		\NHRRob\SocialLogin\Profile::class,
+		\NHRRob\SocialLogin\Avatar::class,
+		\NHRRob\SocialLogin\Shortcode::class,
+		\NHRRob\SocialLogin\OneTap::class,
+		\NHRRob\SocialLogin\WooCommerce::class,
+		\NHRRob\SocialLogin\Notify::class,
+		\NHRRob\SocialLogin\MagicLink::class,
+		\NHRRob\SocialLogin\VerifiedMark::class,
+		\NHRRob\SocialLogin\Abilities::class,
+		\NHRRob\SocialLogin\Rest::class,
+	];
+
+	/**
+	 * Initialize the plugin: every feature, and the settings app in the dashboard.
 	 *
 	 * @return void
 	 */
 	public function init_plugin(): void {
-		( new \NHRRob\SocialLogin\Login() )->init();
-		( new \NHRRob\SocialLogin\Abilities() )->init();
-		( new \NHRRob\SocialLogin\Rest() )->init();
+		foreach ( self::FEATURES as $feature ) {
+			( new $feature() )->init();
+		}
 
 		if ( is_admin() ) {
 			( new \NHRRob\SocialLogin\Admin() )->init();
