@@ -1,4 +1,9 @@
 name: Deploy to WordPress.org
+
+# A pushed tag v<version> is the release: it sends the version to
+# WordPress.org (SVN) and makes the GitHub release with that version's
+# changelog from readme.txt. The two jobs are independent, so the GitHub
+# release is made even while the WordPress.org deploy cannot run.
 on:
   push:
     tags:
@@ -16,7 +21,6 @@ jobs:
       env:
         SVN_PASSWORD: ${{ secrets.SVN_PASSWORD }}
         SVN_USERNAME: ${{ secrets.SVN_USERNAME }}
-        
 
   github-release:
     name: GitHub release
