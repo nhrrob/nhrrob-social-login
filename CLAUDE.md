@@ -45,7 +45,9 @@ tests/           PHPUnit + WP_Mock
 
 ## Hooks for add-ons
 
-- `do_action( 'nhrrob_social_login_signed_in', $user, $context )` after a social sign-in: `provider`, `created`, `redirect_to`.
+- `do_action( 'nhrrob_social_login_signed_in', $user, $context )` after a social sign-in: `provider`, `created`, `redirect_to`, `data`.
+- `apply_filters( 'nhrrob_social_login_button_extra', '', $redirect_to )`: markup printed after the button, inside its paragraph, through `wp_kses()` with `Login::EXTRA_HTML` (labels, checkboxes, spans).
+- `apply_filters( 'nhrrob_social_login_start_data', [], $redirect_to )` when a sign-in starts: kept in its transient and passed back as the context's `data`.
 - `do_action( 'nhrrob_social_login_enqueue', $handle )` after the app's script; the add-on's script adds `{ groups, screens }` through the `nhrrobSocialLogin.app` JS filter.
 
 These stay as they are once an add-on uses them.
@@ -56,7 +58,7 @@ These stay as they are once an add-on uses them.
 |---|---|
 | option `nhrrob_social_login_settings` | `google_client_id`, `google_client_secret` (when not in wp-config.php), `create_accounts` |
 | user meta `nhrrob_social_login_google_sub` | the linked Google account's `sub` |
-| transient `nhrrob_social_login_<sha256 of state>`, 10 minutes | a sign-in in progress: nonce, PKCE verifier, redirect_to |
+| transient `nhrrob_social_login_<sha256 of state>`, 10 minutes | a sign-in in progress: nonce, PKCE verifier, redirect_to, add-on data |
 | cookie `nhrrob_social_login_state`, 10 minutes | the state, deleted when the sign-in finishes |
 
 ## Commands
