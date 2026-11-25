@@ -10,6 +10,12 @@ import { Icon } from './ui';
 const P = 'nhrrob-social-login-';
 const THEME_KEY = 'nhrrob-social-login-theme';
 
+// A theme fixed for every NHR plugin by another plugin: 'light', 'dark' or
+// 'system'. Anything else is ignored, and the saved choice applies.
+const FORCED = [ 'light', 'dark', 'system' ].includes( window.nhrUi?.theme )
+	? window.nhrUi.theme
+	: '';
+
 function remember( key, value ) {
 	try {
 		window.localStorage.setItem( key, value );
@@ -54,7 +60,11 @@ export default function AppShell( {
 	const prefersDark =
 		window.matchMedia &&
 		window.matchMedia( '(prefers-color-scheme: dark)' ).matches;
-	const isDark = theme ? theme === 'dark' : prefersDark;
+	let shown = theme;
+	if ( FORCED ) {
+		shown = FORCED === 'system' ? '' : FORCED;
+	}
+	const isDark = shown ? shown === 'dark' : prefersDark;
 
 	let current = null;
 	groups.forEach( ( g ) =>
@@ -66,7 +76,7 @@ export default function AppShell( {
 	);
 
 	return (
-		<div className={ P + 'app' } data-theme={ theme || undefined }>
+		<div className={ P + 'app nhr-app' } data-theme={ shown || undefined }>
 			<aside className={ P + 'side' }>
 				<div className={ P + 'brand' }>
 					<span className={ P + 'brand__mark' }>
@@ -159,28 +169,33 @@ export default function AppShell( {
 						</nav>
 					) }
 					<span className={ P + 'top__spacer' } />
-					<button
-						type="button"
-						className={ P + 'iconbtn' }
-						aria-label={
-							isDark
-								? __(
-										'Switch to light theme',
-										'nhrrob-social-login'
-								  )
-								: __(
-										'Switch to dark theme',
-										'nhrrob-social-login'
-								  )
-						}
-						onClick={ () => {
-							const next = isDark ? 'light' : 'dark';
-							remember( THEME_KEY, next );
-							setTheme( next );
-						} }
-					>
-						<Icon name={ isDark ? 'sun' : 'moon' } size={ 16 } />
-					</button>
+					{ ! FORCED && (
+						<button
+							type="button"
+							className={ P + 'iconbtn' }
+							aria-label={
+								isDark
+									? __(
+											'Switch to light theme',
+											'nhrrob-social-login'
+									  )
+									: __(
+											'Switch to dark theme',
+											'nhrrob-social-login'
+									  )
+							}
+							onClick={ () => {
+								const next = isDark ? 'light' : 'dark';
+								remember( THEME_KEY, next );
+								setTheme( next );
+							} }
+						>
+							<Icon
+								name={ isDark ? 'sun' : 'moon' }
+								size={ 16 }
+							/>
+						</button>
+					) }
 				</div>
 				<main className={ P + 'content' }>{ children }</main>
 			</div>

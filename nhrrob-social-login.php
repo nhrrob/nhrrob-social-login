@@ -5,7 +5,7 @@
  * Description: Log in, and comment, with Google, Microsoft, Apple, GitHub, Facebook, X, LinkedIn or a link by email.
  * Author: Nazmul Hasan Robin
  * Author URI: https://profiles.wordpress.org/nhrrob/
- * Version: 0.3.0
+ * Version: 0.3.1
  * Requires at least: 6.6
  * Requires PHP: 7.4
  * Text Domain: nhrrob-social-login
@@ -31,7 +31,7 @@ final class NHRRob_Social_Login {
 	 *
 	 * @var string
 	 */
-	const VERSION = '0.3.0';
+	const VERSION = '0.3.1';
 
 	/**
 	 * Class constructor
